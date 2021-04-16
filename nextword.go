@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/high-moctane/go-readerer"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/high-moctane/go-readerer"
 )
 
 // ReadLineBufSize is buffer size for Nextword.ReadLine
@@ -84,7 +85,9 @@ func (nw *Nextword) Suggest(input string) (candidates []string, err error) {
 	}
 
 	// search 1-gram
-	cand, err := nw.searchOneGram(prefix)
+	// cand, err := nw.searchOneGram(prefix)
+	cand, err := nw.searchDictionary(prefix)
+
 	if err != nil {
 		return
 	}
@@ -208,6 +211,53 @@ func (nw *Nextword) searchOneGram(prefix string) (candidates []string, err error
 	for sc.Scan() {
 		line := sc.Text()
 		if !strings.HasPrefix(line, prefix) {
+			break
+		}
+		candidates = append(candidates, line)
+	}
+	if sc.Err() != nil {
+		err = sc.Err()
+		return
+	}
+
+	return
+}
+
+// searchDictionary search English word
+func (nw *Nextword) searchDictionary(prefix string) (candidates []string, err error) {
+	if prefix == "" {
+		return
+	}
+
+	// open
+	path := filepath.Join(nw.params.DataPath, "dict.txt")
+	f, err := os.Open(path)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	fi, err := os.Stat(path)
+	if err != nil {
+		return
+	}
+
+	query := prefix + "\t"
+
+	// search offset
+	offset, err := nw.binarySearch(f, 0, fi.Size(), query)
+	if err != nil {
+		if err == io.EOF {
+			err = nil
+		}
+		return
+	}
+
+	// collect
+	r := readerer.FromReaderAt(f, offset)
+	sc := bufio.NewScanner(r)
+	for sc.Scan() {
+		line := sc.Text()
+		if !strings.HasPrefix(line, query) {
 			break
 		}
 		candidates = append(candidates, line)
