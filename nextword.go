@@ -61,9 +61,23 @@ func NewNextword(params *NextwordParams) (*Nextword, error) {
 func (nw *Nextword) Suggest(input string) (candidates []string, err error) {
 	ngram, prefix := nw.parseInput(input)
 
+	candidates = make([]string, 0)
+	candidates_words := map[string]bool{}
+
+	word_for_dict := prefix
+	if len(word_for_dict) == 0 {
+		word_for_dict = ngram[len(ngram)-1]
+	}
+
+	cand, err := nw.searchDictionary(word_for_dict)
+	if err != nil {
+		return
+	}
+
+	candidates, candidates_words = nw.mergeCandidates(cand, candidates, candidates_words)
+
 	// search n-gram
 	for i := 0; i < len(ngram); i++ {
-		var cand []string
 		cand, err = nw.searchNgram(ngram[i:])
 		if err != nil {
 			return
@@ -73,7 +87,8 @@ func (nw *Nextword) Suggest(input string) (candidates []string, err error) {
 		if prefix != "" {
 			cand = nw.filterCandidates(cand, prefix)
 		}
-		candidates = nw.mergeCandidates(candidates, cand)
+
+		candidates, candidates_words = nw.mergeCandidates(cand, candidates, candidates_words)
 
 		// end condition
 		if len(candidates) > nw.params.CandidateNum {
@@ -82,16 +97,16 @@ func (nw *Nextword) Suggest(input string) (candidates []string, err error) {
 		if !nw.params.Greedy && len(candidates) > 0 {
 			return
 		}
+
 	}
 
 	// search 1-gram
-	// cand, err := nw.searchOneGram(prefix)
-	cand, err := nw.searchDictionary(prefix)
+	cand, err = nw.searchOneGram(prefix)
 
 	if err != nil {
 		return
 	}
-	candidates = nw.mergeCandidates(candidates, cand)
+	candidates, _ = nw.mergeCandidates(cand, candidates, candidates_words)
 	if len(candidates) > nw.params.CandidateNum {
 		candidates = candidates[:nw.params.CandidateNum]
 	}
@@ -354,22 +369,16 @@ func (*Nextword) removeEOF(err error) error {
 }
 
 // mergeCandidates merges two candidates
-func (*Nextword) mergeCandidates(a, b []string) []string {
-	ret := a[:]
-
-	m := map[string]bool{}
-	for _, str := range a {
-		m[str] = true
-	}
-
+func (*Nextword) mergeCandidates(b []string, a []string, a_words map[string]bool) ([]string, map[string]bool) {
 	for _, str := range b {
-		if !m[str] {
-			m[str] = true
-			ret = append(ret, str)
+		word := strings.Split(str, "\t")[0]
+
+		if !a_words[word] {
+			a_words[word] = true
+			a = append(a, str)
 		}
 	}
-
-	return ret
+	return a, a_words
 }
 
 // filterCandidates filters words which do not begin with prefix from cand.

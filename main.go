@@ -65,7 +65,7 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(strings.Join(candidates, " "))
+		fmt.Println(strings.Join(candidates, "\n"))
 	}
 	if sc.Err() != nil {
 		return sc.Err()
