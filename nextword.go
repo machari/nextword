@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/high-moctane/go-readerer"
@@ -74,7 +75,7 @@ func (nw *Nextword) Suggest(input string) (candidates []string, err error) {
 		return
 	}
 
-	candidates, candidates_words = nw.mergeCandidates(cand, candidates, candidates_words)
+	candidates, candidates_words = nw.mergeCandidates(cand, candidates, candidates_words, "@")
 
 	// search n-gram
 	for i := 0; i < len(ngram); i++ {
@@ -88,7 +89,8 @@ func (nw *Nextword) Suggest(input string) (candidates []string, err error) {
 			cand = nw.filterCandidates(cand, prefix)
 		}
 
-		candidates, candidates_words = nw.mergeCandidates(cand, candidates, candidates_words)
+		matched_ngram_length := len(ngram) - i
+		candidates, candidates_words = nw.mergeCandidates(cand, candidates, candidates_words, "N"+strconv.Itoa(matched_ngram_length))
 
 		// end condition
 		if len(candidates) > nw.params.CandidateNum {
@@ -97,7 +99,6 @@ func (nw *Nextword) Suggest(input string) (candidates []string, err error) {
 		if !nw.params.Greedy && len(candidates) > 0 {
 			return
 		}
-
 	}
 
 	// search 1-gram
@@ -106,7 +107,7 @@ func (nw *Nextword) Suggest(input string) (candidates []string, err error) {
 	if err != nil {
 		return
 	}
-	candidates, _ = nw.mergeCandidates(cand, candidates, candidates_words)
+	candidates, _ = nw.mergeCandidates(cand, candidates, candidates_words, "")
 	if len(candidates) > nw.params.CandidateNum {
 		candidates = candidates[:nw.params.CandidateNum]
 	}
@@ -369,13 +370,13 @@ func (*Nextword) removeEOF(err error) error {
 }
 
 // mergeCandidates merges two candidates
-func (*Nextword) mergeCandidates(b []string, a []string, a_words map[string]bool) ([]string, map[string]bool) {
+func (*Nextword) mergeCandidates(b []string, a []string, a_words map[string]bool, match_type string) ([]string, map[string]bool) {
 	for _, str := range b {
 		word := strings.Split(str, "\t")[0]
 
 		if !a_words[word] {
 			a_words[word] = true
-			a = append(a, str)
+			a = append(a, match_type+"\t"+str)
 		}
 	}
 	return a, a_words
