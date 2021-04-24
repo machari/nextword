@@ -89,7 +89,7 @@ func (nw *Nextword) Suggest(input string) (candidates []string, err error) {
 			cand = nw.filterCandidates(cand, prefix)
 		}
 
-		matched_ngram_length := len(ngram) - i
+		matched_ngram_length := len(ngram) - i + 1
 		candidates, candidates_words = nw.mergeCandidates(cand, candidates, candidates_words, "N"+strconv.Itoa(matched_ngram_length))
 
 		// end condition
