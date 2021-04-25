@@ -66,7 +66,7 @@ func (nw *Nextword) Suggest(input string) (candidates []string, err error) {
 	candidates_words := map[string]bool{}
 
 	word_for_dict := prefix
-	if len(word_for_dict) == 0 {
+	if len(word_for_dict) == 0 && len(ngram) > 0 {
 		word_for_dict = ngram[len(ngram)-1]
 	}
 
